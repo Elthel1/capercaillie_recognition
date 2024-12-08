@@ -1,0 +1,4 @@
+media/*
+.venv
+.venv/*
+*test.py
