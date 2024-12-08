@@ -1,42 +1,37 @@
 # inference.py
 import torch
-from model import EarlyFusionModel, BirdDataset, count_unique_individuals
+from model import BirdDataset, EarlyFusionModel
+from torch.utils.data import DataLoader
+from training import load_frames_from_folder, load_audio_from_folder  # Import functions to load frames and audio
 
 if __name__ == "__main__":
     # Load the trained model
     model = EarlyFusionModel().cuda()  # Move model to GPU
-    model.load_state_dict(torch.load('early_fusion_model.pth'))
+    model.load_state_dict(torch.load('model\\early_fusion_model.pth'))
     model.eval()  # Set to evaluation mode
 
     # Load your video frames and audio clips for inference
-    frames_video1 = [...]  # List of frames from video 1
-    audio_clips_video1 = [...]  # Corresponding audio clips for video 1
-    frames_video2 = [...]  # List of frames from video 2
-    audio_clips_video2 = [...]  # Corresponding audio clips for video 2
+    frames_video1 = load_frames_from_folder('..\\media\\frames_and_audio\\single_bird1\\folder0\\frames')  # List of frames from folder 1
+    audio_clips_video1 = load_audio_from_folder('..\\media\\frames_and_audio\\single_bird1\\folder0\\audio')  # Corresponding audio clips for video 1
+    frames_video2 = load_frames_from_folder('..\\media\\frames_and_audio\\single_bird1\\folder1\\frames')  # List of frames from folder 2
+    audio_clips_video2 = load_audio_from_folder('..\\media\\frames_and_audio\\single_bird1\\folder1\\audio')  # Corresponding audio clips for video 2
+
+    # Concatenate frames and audio clips from both videos
+    all_frames = frames_video1 + frames_video2
+    all_audio_clips = audio_clips_video1 + audio_clips_video2
+    
+    
+    dataset = BirdDataset(all_frames, all_audio_clips, [1]) # label isn't used
+    dataloader = DataLoader(dataset)
+
+    outputs = []
+    
+    for batch_frames, batch_audios, _batch_label in dataloader:
+        batch_frames = batch_frames.cuda()
+        batch_audios = batch_audios.cuda()
+        
+        outputs = model(batch_frames, batch_audios)
 
     # Process videos for inference
-    embeddings_video1 = []
-    for frame, audio in zip(frames_video1, audio_clips_video1):
-        with torch.no_grad():
-            audio_tensor = torchaudio.transforms.Spectrogram()(audio.unsqueeze(0)).cuda()  # Add batch dimension and move to GPU
-            output = model(frame.unsqueeze(0).cuda(), audio_tensor)  # Add batch dimension for frame and move to GPU
-            embeddings_video1.append(output)
 
-    embeddings_video2 = []
-    for frame, audio in zip(frames_video2, audio_clips_video2):
-        with torch.no_grad():
-            audio_tensor = torchaudio.transforms.Spectrogram()(audio.unsqueeze(0)).cuda()  # Add batch dimension and move to GPU
-            output = model(frame.unsqueeze(0).cuda(), audio_tensor)
-            embeddings_video2.append(output)
-
-    # Count unique individuals using combined embeddings
-    unique_count_video1 = count_unique_individuals(embeddings_video1)
-    unique_count_video2 = count_unique_individuals(embeddings_video2)
-
-    # Count same individuals across videos
-    combined_embeddings = embeddings_video1 + embeddings_video2
-    same_individuals = count_unique_individuals(combined_embeddings)
-
-    print(f'Video 1 unique individuals: {unique_count_video1}')
-    print(f'Video 2 unique individuals: {unique_count_video2}')
-    print(f'Same individuals across videos: {same_individuals}')
+    print(f'Unique individuals: {outputs}')

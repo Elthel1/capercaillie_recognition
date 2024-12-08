@@ -2,3 +2,5 @@ media/*
 .venv
 .venv/*
 *test.py
+*__pycache__*
+*model/*
